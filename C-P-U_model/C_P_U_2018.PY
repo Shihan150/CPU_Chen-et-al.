@@ -68,7 +68,7 @@ k_mocb = 2.5e12     # marine organic C burial
 delta_mocb = -30
 delta_locb = -30
 
-delta_g = -26
+
 delta_c = 4.5
 delta_vol = -1
 # organic weathering is kept free to close the 13c cycle
@@ -125,26 +125,29 @@ d_u_other = delta_u_other-delta_u_i
 silw_i = 5              # e12 mol/yr, 5-10.5
 carbw_i = 7            # e12 mol/yr, 4-14
 
-temp_i = 285         # K, 283-287
+temp_i = 2.85         # K, 283-287
 
 po2pal_i = 1         # 1.0 - 1.2
 
 ppal_i = 1.4         # 1.0 - 1.5
 
-scale_silw = np.array([1.25,1.4,1.5,1.3])  # integrated long-term silicate weathering scale at t =  305, 300, 295, 290 Ma
-# scale_carbw = np.array([1,10,2,1]) # integrated long-term carbonate weathering modifier at t = 305, 300, 295, 290 Ma
+scale_silw = [1.4, 1.6]  # integrated long-term silicate weathering scale at t =  305, 300, 295, 290 Ma
+scale_carbw = 1.2 # integrated long-term carbonate weathering modifier at t = 305, 300, 295, 290 Ma
 scale_degassing = 1.0   # relative outgassing scale, 0.8-1.2
 scale_u_riv = 0.2   # relative d_u_riv modifier to fit the lont-term d238u trend
 scale_d13c_oxidw = 0.7  # relative oxidw modifier to fit the long-term d13c trend
 
 alpha = 0.33             # co2 dependence, 0.2-0.5
-te = 34                 # e-folding temperature dependence of continental weathering, 5-50, after Krissansen-Totton et a., 2018
+te = 3.4                 # e-folding temperature dependence of continental weathering, 5-50, after Krissansen-Totton et a., 2018
 
-cinput = np.array([20,10,10,15])   # *1e15 Carbon for 4 carbon emission events, corresponding time is manually defined
+p_on_silw = 1          # P dependence on silw flux
 
-params =[silw_i, carbw_i, temp_i, po2pal_i, ppal_i, scale_silw[0], scale_silw[1],scale_silw[2], scale_silw[3],
+cinput = np.array([1.5,2,1.8,4])   # *1e15 Carbon for 4 carbon emission events, corresponding time is manually defined
+
+params =[silw_i, carbw_i, temp_i, po2pal_i, ppal_i, scale_silw[0], scale_silw[1], scale_carbw,
          # scale_carbw[0],scale_carbw[1]
          scale_degassing, scale_u_riv, scale_d13c_oxidw, alpha, te, 
+         # p_on_silw,
          cinput[0], cinput[1], cinput[2], cinput[3]]
 # np.array([silw_i, carbw_i, temp_i, po2pal_i, scale_silw, scale_carbw, scale_degassing, te, cinput])
 
@@ -158,25 +161,28 @@ def log_probability(params):
         return -np.inf
     
     else:
-    
-        global fscale_silw, fscale_carbw, fscale_degassing,silw_i, carbw_i, alpha, te, ccdeg_i,o_i,p_i, fcinp, ANOX_i, phi_i, ppal_i, fscale_u_riv, fscale_d13c_oxidw
-        scale_silw = np.zeros(4)
-        cinput = np.zeros(4)
-        silw_i, carbw_i, temp_i, po2pal_i, ppal_i, scale_silw[0],scale_silw[1],scale_silw[2], scale_silw[3], scale_degassing, scale_u_riv, scale_d13c_oxidw, alpha, te, cinput[0], cinput[1], cinput[2], cinput[3]= params
+        print(log_prior(params), params)
+        global fscale_silw, fscale_carbw, temp_i, fscale_degassing,silw_i, carbw_i, alpha, te, ccdeg_i,o_i,p_i, fcinp, ANOX_i, phi_i, ppal_i, fscale_u_riv, fscale_d13c_oxidw, p_on_silw
         
+        cinput = np.zeros(4)
+        scale_silw = np.zeros(2)
+        silw_i, carbw_i, temp_i, po2pal_i, ppal_i, scale_silw[0], scale_silw[1], scale_carbw, scale_degassing, scale_u_riv, scale_d13c_oxidw, alpha, te,  cinput[0], cinput[1], cinput[2], cinput[3]= params
+        p_on_silw = 1.2
         silw_i*=1e12
         carbw_i*=1e12
+        temp_i = temp_i*100
+        te *= 10
+        cinput *= 10
         
-        interp_scale_silw = [1]
-        interp_scale_carbw = [1]
+    
         
-        interp_scale_silw.extend(scale_silw)
+       
         # interp_scale_carbw.extend(scale_carbw)
         
         
         
-        fscale_silw = interpolate.interp1d([-310e6,-305e6,-300e6,-295e6,-290e6],interp_scale_silw, bounds_error = False, fill_value = 1)
-        # fscale_carbw = interpolate.interp1d([-310e6,-305e6,-300e6,-295e6,-290e6], interp_scale_carbw, bounds_error = False, fill_value = 1)
+        fscale_silw = interpolate.interp1d([-310e6, -300e6, -290e6],[1,scale_silw[0], scale_silw[1]], bounds_error = False, fill_value = 1)
+        fscale_carbw = interpolate.interp1d([-310e6,-290e6], [1,scale_carbw], bounds_error = False, fill_value = 1)
         fscale_degassing = interpolate.interp1d([-310e6, -290e6],[1,scale_degassing], bounds_error = False, fill_value = 1)
         fscale_u_riv = interpolate.interp1d([-310e6, -290e6],[1,scale_u_riv], bounds_error = False, fill_value = 1)
         fscale_d13c_oxidw = interpolate.interp1d([-310e6, -290e6],[1,scale_d13c_oxidw], bounds_error = False, fill_value = 1)
@@ -209,8 +215,8 @@ def log_probability(params):
         
         delta_a_i = delta_ocn_i - d_ocean_i
         delta_mccb_i = delta_a_i + d_mccb_i
-    
         
+        global delta_g
         delta_g = (locb_i * ( delta_locb) + mocb_i * (delta_mocb) - ccdeg_i * delta_vol - carbw_i * delta_c + mccb_i * delta_mccb_i)/oxidw_i
         
         moldelta_a_i = a_i * delta_a_i
@@ -252,79 +258,91 @@ def log_probability(params):
         # print("\n@ Starting integration")
         # print("[tstart tfinal]=[%.2e %.2e]\n" % (t0, tfinal))
         
-        t = ysol.t                # time
-        y = ysol.y                # tracers
-
-        nstep = len(t)
-
-        params = np.zeros((nstep, 14))
-
-        for i in range(nstep):
-            params[i,:] = derivs(t[i], y[:,i], 0)
-
-        df_params = pd.DataFrame(params)
-        df_params.columns=['Temperature','ccdeg', 'oxidw', 'locb', 'mocb', 'silw', 'carbw', 'mccb', 'delta_ocn', 'phosw', 'mopb', 'fepb', 'capb', 'ANOX']
-        df_params['Age'] = t
-
-        df_sol = pd.DataFrame(ysol.y.T)
-        df_sol.columns=['A',  'P',  'O', 'moldelta_A', 'U', 'moldelta_U']
-
-
-        df_sol['Age'] = ysol.t
-        df_sol['phosphate_m'] = (df_sol['P']/k_oceanmass) * 1e6  # umol/kg
-        df_sol['p/p0'] = df_sol['phosphate_m']/2.2
-        df_sol['U_m'] = (df_sol['U']/k_oceanmass)*1e6            # umol/kg
-        df_sol['d235U'] = (df_sol['moldelta_U']/df_sol['U'])     # d235U
-        df_sol['CO2_PAL'] = (df_sol['A']/a_i)**2
-        df_sol['d13c'] = (df_sol['moldelta_A']/df_sol['A'])      # d13c
-
-        df_sol['CO2atm'] = df_sol['CO2_PAL'] * pco2_i * 1e6
-
-        # df_sol.to_csv("tracer.csv")
-        # df_params.to_csv("parameters.csv")
-
-        fig, axes = plt.subplots(figsize = (12,10), nrows = 3, ncols = 3)
-
-        df_sol.plot(x='Age', y='CO2atm', ax=axes[0,0])
-        target.plot(x='age', y='pco2', ax=axes[0,0], marker = '*', lw=0)
-        df_sol.plot(x='Age', y='U_m', ax=axes[0,1])
-        df_sol.plot(x='Age', y='d235U', ax=axes[0,2])
-        target.plot(x='age', y = 'u', ax = axes[0,2], marker='*', lw=0)
-        df_sol.plot(x='Age', y='phosphate_m', ax=axes[1,0])
-        df_params.plot(x='Age', y ='ANOX', ax=axes[1,1])
-        # axes[1,2].remove()
-        # df_params.plot(x='Age', y ='oxidw', ax=axes[1,2])
-        # df_params.plot(x='Age', y ='locb', ax=axes[2,0])
-        # df_params.plot(x='Age', y ='mocb', ax=axes[2,1])
-        df_params.plot(x='Age', y ='silw', ax=axes[1,2])
-        # df_params.plot(x='Age', y ='carbw', ax=axes[2,2])
-        df_sol.plot(x='Age', y='d13c', ax=axes[2,0])
-        target.plot(x='age', y='d13c', ax=axes[2,0], marker = '*', lw=0)
-
-
-
-        plt.tight_layout()
-
-        pco2_proxy = target['pco2'].values
-        pco2_std = target['pco2_std'].values
-        d13c_proxy = target['d13c'].values
-        d13c_std = target['d13c_std'].values
-        u_proxy = target['u'].values
-        u_std = target['u_std'].values
-
-        pco2_model = df_sol['CO2atm'].values
-        d13c_model = df_sol['d13c'].values
-        u_model = df_sol['d235U'].values
-
-        sum_diff = sum((pco2_proxy-pco2_model)**2/(pco2_std**2)) +  0.2 *  sum((d13c_proxy-d13c_model)**2/(d13c_std**2)) +  0.5 * sum((u_proxy-u_model)**2/(u_std**2))
-        lp = -0.5 * sum_diff
+        if np.isnan(ysol.y).any():
+            return -np.inf
         
-    
-    
+        else:
+            t = ysol.t                # time
+            y = ysol.y                # tracers
 
-    
-    
-        return lp
+            nstep = len(t)
+
+            params = np.zeros((nstep, 14))
+
+            for i in range(nstep):
+                params[i,:] = derivs(t[i], y[:,i], 0)
+
+            df_params = pd.DataFrame(params)
+            df_params.columns=['Temperature','ccdeg', 'oxidw', 'locb', 'mocb', 'silw', 'carbw', 'mccb', 'delta_ocn', 'phosw', 'mopb', 'fepb', 'capb', 'ANOX']
+            df_params['Age'] = t
+
+            df_sol = pd.DataFrame(ysol.y.T)
+            df_sol.columns=['A',  'P',  'O', 'moldelta_A', 'U', 'moldelta_U']
+
+
+            df_sol['Age'] = ysol.t
+            df_sol['phosphate_m'] = (df_sol['P']/k_oceanmass) * 1e6  # umol/kg
+            df_sol['p/p0'] = df_sol['phosphate_m']/2.2
+            df_sol['U_m'] = (df_sol['U']/k_oceanmass)*1e6            # umol/kg
+            df_sol['d235U'] = (df_sol['moldelta_U']/df_sol['U'])     # d235U
+            df_sol['CO2_PAL'] = (df_sol['A']/a_i)**2
+            df_sol['d13c'] = (df_sol['moldelta_A']/df_sol['A'])      # d13c
+
+            df_sol['CO2atm'] = df_sol['CO2_PAL'] * pco2_i * 1e6
+            df_sol['O2PAL'] = df_sol['O']/o0
+            # df_sol.to_csv("tracer.csv")
+            # df_params.to_csv("parameters.csv")
+
+            fig, axes = plt.subplots(figsize = (12,10), nrows = 3, ncols = 3)
+
+            df_sol.plot(x='Age', y='CO2atm', ax=axes[0,0])
+            target.plot(x='age', y='pco2', ax=axes[0,0], marker = '*', lw=0)
+            df_sol.plot(x='Age', y='U_m', ax=axes[0,1])
+            df_sol.plot(x='Age', y='d235U', ax=axes[0,2])
+            target.plot(x='age', y = 'u', ax = axes[0,2], marker='*', lw=1.5)
+            df_sol.plot(x='Age', y='phosphate_m', ax=axes[1,0])
+            df_params.plot(x='Age', y ='ANOX', ax=axes[1,1])
+            # axes[1,2].remove()
+            # df_params.plot(x='Age', y ='oxidw', ax=axes[1,2])
+            # df_params.plot(x='Age', y ='locb', ax=axes[2,0])
+            # df_params.plot(x='Age', y ='mocb', ax=axes[2,1])
+            df_params.plot(x='Age', y ='silw', ax=axes[1,2])
+            # df_params.plot(x='Age', y ='carbw', ax=axes[2,2])
+            df_sol.plot(x='Age', y='d13c', ax=axes[2,0])
+            target.plot(x='age', y='d13c', ax=axes[2,0], marker = '*', lw=1.5)
+            df_sol.plot(x='Age', y='O2PAL', ax=axes[2,1])
+            
+            axes[2,2].plot(t, fcinp(t)/1e15)
+            axes[2,2].set_ylabel('Carbon emission (Gt/yr)')
+
+
+            plt.tight_layout()
+
+            pco2_proxy = target['pco2'].values
+            pco2_std = target['pco2_std'].values
+            d13c_proxy = target['d13c'].values
+            d13c_std = target['d13c_std'].values
+            u_proxy = target['u'].values
+            u_std = target['u_std'].values
+
+            pco2_model = df_sol['CO2atm'].values
+            d13c_model = df_sol['d13c'].values
+            u_model = df_sol['d235U'].values
+
+            u_index1 = range(21)
+            u_index2 = 35
+            
+            index = [0,5,11,15,20,37, 44,50,55,60,65,70,73]
+
+            sum_diff = sum((pco2_proxy[::3]-pco2_model[::3])**2/(pco2_std[::3]**2)) +   sum((u_proxy[index]-u_model[index])**2/(u_std[index]**2)) 
+    #         sum((u_proxy-u_model)**2/(u_std**2))
+            # 0.2 *  sum((d13c_proxy-d13c_model)**2/(d13c_std**2)) +  0.5
+            
+
+           
+            print(-0.5*sum_diff)
+
+            return lp-0.5 * sum_diff
 
 
 
@@ -366,7 +384,7 @@ def derivs(t, y, switch):
     
     
     
-    carbw = fscale_silw(t) * carbw_i * (pco2pal ** alpha) * np.exp(diff_temp/te)          
+    carbw = fscale_carbw(t) * fscale_silw(t) * carbw_i * (pco2pal ** alpha) * np.exp(diff_temp/te)          
 
     # oxidw
     oxw_fac = po2pal ** f_oxw_a
@@ -412,7 +430,7 @@ def derivs(t, y, switch):
     # capb_i = k_capb * ((newp_i/newp0))
 
     # phosphorous balance
-    phosw = phosw_i * ((silw)/(silw_i)) **1
+    phosw = phosw_i * ((silw)/(silw_i)) ** p_on_silw
 
 
     pp = phosw-mopb-fepb-capb
@@ -446,24 +464,16 @@ def derivs(t, y, switch):
         return params
 
 def log_prior(theta):
-    scale_silw = np.zeros(4)
+    
     cinput = np.zeros(4)
-    silw_i, carbw_i, temp_i, po2pal_i, ppal_i, scale_silw[0],scale_silw[1],scale_silw[2], scale_silw[3], scale_degassing, scale_u_riv, scale_d13c_oxidw, alpha, te, cinput[0], cinput[1], cinput[2], cinput[3]= params
-    if 2<=silw_i<=12 and 4<=carbw_i<=14 and 283<=temp_i<=287 and 1.0<=po2pal_i<=1.3 and 1.0<=ppal_i<=1.5 and 0.9<=scale_silw.all()<=1.3 and 0.8<=scale_degassing<=1.2 and 0<=scale_u_riv<=1.0 and 0.2 <= scale_d13c_oxidw<=1.0 and 0.2<=alpha<=0.5 and 5<=te<=50 and 5<=cinput[0]<=30 and 5<=cinput[1]<=30 and 5<=cinput[2]<=30 and 5<=cinput[3]<=30  :
+    scale_silw = np.zeros(2)
+    silw_i, carbw_i, temp_i, po2pal_i, ppal_i, scale_silw[0], scale_silw[1], scale_carbw, scale_degassing, scale_u_riv, scale_d13c_oxidw, alpha, te,cinput[0], cinput[1], cinput[2], cinput[3]= theta
+    if 2<=silw_i<=12 and 4<=carbw_i<=14 and 2.83<=temp_i<=2.87 and 1.0<=po2pal_i<=1.3 and 1.0<=ppal_i<=1.5 and 1.0<=scale_silw.any()<=2.0 and 1.0<= scale_carbw<=2 and 0.8<=scale_degassing<=1.2 and 0<=scale_u_riv<=1.0 and 0.2 <= scale_d13c_oxidw<=1.0 and 0.2<=alpha<=0.5 and 0.5<=te<=5 and 0.5<=cinput[0]<=3 and 0.5<=cinput[1]<=3 and 0.5<=cinput[2]<=3 and .5<=cinput[3]<=4  :
         return 0.0
     return -np.inf
 
-
-ndim = len(params)
-
-pos = params +  1e-3 * np.random.randn(32, ndim)
-nwalkers, ndim = pos.shape
-
-sampler = emcee.EnsembleSampler(
-    nwalkers, ndim, log_probability
-)
-sampler.run_mcmc(pos, 5000, progress=True)
-
     
    
-
+log_probability([5.09610023, 9.079668,   2.84611144, 1.00953257, 1.42505597, 1.4, 2.0,
+1, 1.07570367, 0.64767465, 0.82393394, 0.36004522, 1.88942291, 1.5,
+1.5, 1, 3.47145794])
