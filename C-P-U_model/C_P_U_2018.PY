@@ -33,7 +33,7 @@ import emcee
 
 
 ### load the target data
-target = pd.read_csv('target.csv')
+target = pd.read_csv('For_inv.csv')
 
 '''--------------------------    Initial fluxes at t = 310ma -------------------------------- '''
 
@@ -58,7 +58,7 @@ pco2pal_i = pco2_i/280e-6
 a_i = a0 * np.sqrt(pco2pal_i)
 
 delta_ocn_i = 4.46
-delta_u_i = -0.16-0.27             # diagenetic correction, after Chen et al., 2022
+delta_u_i = -0.10-0.27             # diagenetic correction, after Chen et al., 2022
 
 k_oxidw = 5e12      # oxidative weatheirng + degassing, kept constant for simplicity
 k_locb = 2.5e12     # continental organic C burial
@@ -122,31 +122,30 @@ d_u_other = delta_u_other-delta_u_i
 
 
 ###########       Parameters for inversion       ################
-silw_i = 5              # e12 mol/yr, 5-10.5
-carbw_i = 7            # e12 mol/yr, 4-14
+silw_i = 15              # 1.25*modern
+carbw_i = 8            # 1*modern
 
-temp_i = 2.85         # K, 283-287
+temp_i = 15+273.15         # K, 283-287
 
 po2pal_i = 1         # 1.0 - 1.2
 
 ppal_i = 1.4         # 1.0 - 1.5
 
-scale_silw = [1.4, 1.6]  # integrated long-term silicate weathering scale at t =  305, 300, 295, 290 Ma
-scale_carbw = 1.2 # integrated long-term carbonate weathering modifier at t = 305, 300, 295, 290 Ma
+scale_silw = [1.4, 1.6, 1.8]  # integrated long-term silicate weathering scale at t =  300, 290, 285 Ma
+scale_carbw = 1.2 # integrated long-term carbonate weathering modifier, change to organic burial later
 scale_degassing = 1.0   # relative outgassing scale, 0.8-1.2
-scale_u_riv = 0.2   # relative d_u_riv modifier to fit the lont-term d238u trend
+scale_u_riv = 0.2   # relative d_u_riv modifier to fit the lont-term d238u trend, chagne to others later
 scale_d13c_oxidw = 0.7  # relative oxidw modifier to fit the long-term d13c trend
 
-alpha = 0.33             # co2 dependence, 0.2-0.5
+alpha = 0.33             # co2 dependence
 te = 3.4                 # e-folding temperature dependence of continental weathering, 5-50, after Krissansen-Totton et a., 2018
 
 p_on_silw = 1          # P dependence on silw flux
 
-cinput = np.array([1.5,2,1.8,4])   # *1e15 Carbon for 4 carbon emission events, corresponding time is manually defined
+cinput = np.array([1.5,2,1.8,4])   # *1e19 Carbon for 4 carbon emission events, corresponding time is manually defined
 
-params =[silw_i, carbw_i, temp_i, po2pal_i, ppal_i, scale_silw[0], scale_silw[1], scale_carbw,
-         # scale_carbw[0],scale_carbw[1]
-         scale_degassing, scale_u_riv, scale_d13c_oxidw, alpha, te, 
+params =[ ppal_i, scale_silw[0], scale_silw[1], scale_carbw,
+         scale_degassing, scale_u_riv,  
          # p_on_silw,
          cinput[0], cinput[1], cinput[2], cinput[3]]
 # np.array([silw_i, carbw_i, temp_i, po2pal_i, scale_silw, scale_carbw, scale_degassing, te, cinput])
@@ -162,16 +161,14 @@ def log_probability(params):
     
     else:
         print(log_prior(params), params)
-        global fscale_silw, fscale_carbw, temp_i, fscale_degassing,silw_i, carbw_i, alpha, te, ccdeg_i,o_i,p_i, fcinp, ANOX_i, phi_i, ppal_i, fscale_u_riv, fscale_d13c_oxidw, p_on_silw
+        global fscale_silw, fscale_carbw,fscale_degassing,  ccdeg_i,o_i,p_i, fcinp, ANOX_i, phi_i, ppal_i, fscale_u_riv, fscale_d13c_oxidw, p_on_silw
         
         cinput = np.zeros(4)
         scale_silw = np.zeros(2)
-        silw_i, carbw_i, temp_i, po2pal_i, ppal_i, scale_silw[0], scale_silw[1], scale_carbw, scale_degassing, scale_u_riv, scale_d13c_oxidw, alpha, te,  cinput[0], cinput[1], cinput[2], cinput[3]= params
+        ppal_i, scale_silw[0], scale_silw[1], scale_carbw, scale_degassing, scale_u_riv,  cinput[0], cinput[1], cinput[2], cinput[3]= params
         p_on_silw = 1.2
-        silw_i*=1e12
-        carbw_i*=1e12
-        temp_i = temp_i*100
-        te *= 10
+        
+        
         cinput *= 10
         
     
@@ -185,7 +182,7 @@ def log_probability(params):
         fscale_carbw = interpolate.interp1d([-310e6,-290e6], [1,scale_carbw], bounds_error = False, fill_value = 1)
         fscale_degassing = interpolate.interp1d([-310e6, -290e6],[1,scale_degassing], bounds_error = False, fill_value = 1)
         fscale_u_riv = interpolate.interp1d([-310e6, -290e6],[1,scale_u_riv], bounds_error = False, fill_value = 1)
-        fscale_d13c_oxidw = interpolate.interp1d([-310e6, -290e6],[1,scale_d13c_oxidw], bounds_error = False, fill_value = 1)
+        # fscale_d13c_oxidw = interpolate.interp1d([-310e6, -290e6],[1,scale_d13c_oxidw], bounds_error = False, fill_value = 1)
     
         cinput_age = [-305.3e6, -303.8e6, -302.30e6, -301.30e6, -298.32e6, -296.66e6, -295.13e6, -293.73e6]
         # cinput_age = [-304.3e6, -304.15e6, -299.19e6, -298.43e6, -297e6, -296.4e6, -295.73e6, -293.91e6]
@@ -246,7 +243,7 @@ def log_probability(params):
         
         ystart = np.array([a_i, p_i, o_i, moldelta_a_i, u_i, moldelta_u_i])
         t0 = -310e6
-        tfinal = -290e6
+        tfinal = -285e6
     
     
     
@@ -334,7 +331,7 @@ def log_probability(params):
             
             index = [0,5,11,15,20,37, 44,50,55,60,65,70,73]
 
-            sum_diff = sum((pco2_proxy[::3]-pco2_model[::3])**2/(pco2_std[::3]**2)) +   sum((u_proxy[index]-u_model[index])**2/(u_std[index]**2)) 
+            sum_diff = sum((pco2_proxy-pco2_model)**2/(pco2_std**2)) +   sum((u_proxy[0:-1]-u_model[0:-1])**2/(u_std[0:-1]**2)) 
     #         sum((u_proxy-u_model)**2/(u_std**2))
             # 0.2 *  sum((d13c_proxy-d13c_model)**2/(d13c_std**2)) +  0.5
             
@@ -384,7 +381,7 @@ def derivs(t, y, switch):
     
     
     
-    carbw = fscale_carbw(t) * fscale_silw(t) * carbw_i * (pco2pal ** alpha) * np.exp(diff_temp/te)          
+    carbw = fscale_silw(t) * carbw_i * (pco2pal ** alpha) * np.exp(diff_temp/te)          
 
     # oxidw
     oxw_fac = po2pal ** f_oxw_a
@@ -394,7 +391,7 @@ def derivs(t, y, switch):
 
     # burial
     mccb = silw + carbw
-    locb = locb_i * (2*pco2pal/(1+pco2pal))
+    locb = fscale_carbw(t) *locb_i * (2*pco2pal/(1+pco2pal))
     mocb = mocb_i * (p/p_i) ** 2
 
     ap = ccdeg + oxidw  - locb - mocb - silw + fcinp(t)/12
@@ -407,7 +404,7 @@ def derivs(t, y, switch):
     delta_mccb = delta_a + d_mccb
     delta_ocn = delta_a + d_ocean
     # moldelta_ap =  -locb*(delta_a+d_locb) - mocb * (delta_a+d_mocb) + oxidw*delta_g  + ccdeg*delta_vol + carbw*delta_c - mccb*delta_mccb
-    moldelta_ap =  -locb*(delta_locb) - mocb * (delta_mocb) + oxidw*delta_g*fscale_d13c_oxidw(t) + ccdeg*delta_vol + carbw*delta_c - mccb*delta_mccb + fcinp(t)/12 * -20
+    moldelta_ap =  -locb*(delta_locb) - mocb * (delta_mocb) + oxidw*delta_g + ccdeg*delta_vol + carbw*delta_c - mccb*delta_mccb + fcinp(t)/12 * -20
     
     
     
@@ -467,13 +464,13 @@ def log_prior(theta):
     
     cinput = np.zeros(4)
     scale_silw = np.zeros(2)
-    silw_i, carbw_i, temp_i, po2pal_i, ppal_i, scale_silw[0], scale_silw[1], scale_carbw, scale_degassing, scale_u_riv, scale_d13c_oxidw, alpha, te,cinput[0], cinput[1], cinput[2], cinput[3]= theta
-    if 2<=silw_i<=12 and 4<=carbw_i<=14 and 2.83<=temp_i<=2.87 and 1.0<=po2pal_i<=1.3 and 1.0<=ppal_i<=1.5 and 1.0<=scale_silw.any()<=2.0 and 1.0<= scale_carbw<=2 and 0.8<=scale_degassing<=1.2 and 0<=scale_u_riv<=1.0 and 0.2 <= scale_d13c_oxidw<=1.0 and 0.2<=alpha<=0.5 and 0.5<=te<=5 and 0.5<=cinput[0]<=3 and 0.5<=cinput[1]<=3 and 0.5<=cinput[2]<=3 and .5<=cinput[3]<=4  :
+    ppal_i, scale_silw[0], scale_silw[1], scale_carbw, scale_degassing, scale_u_riv, cinput[0], cinput[1], cinput[2], cinput[3]= theta
+    if 1.0<=ppal_i<=1.5 and 1.0<=scale_silw.any()<=2.0 and 1.0<= scale_carbw<=2 and 0.8<=scale_degassing<=1.2 and 0<=scale_u_riv<=1.0 and  0.5<=cinput[0]<=3 and 0.5<=cinput[1]<=3 and 0.5<=cinput[2]<=3 and .5<=cinput[3]<=4  :
         return 0.0
     return -np.inf
 
     
    
-log_probability([5.09610023, 9.079668,   2.84611144, 1.00953257, 1.42505597, 1.4, 2.0,
-1, 1.07570367, 0.64767465, 0.82393394, 0.36004522, 1.88942291, 1.5,
+log_probability([1.42505597, 1.4, 2.0,
+1, 1.07570367, 0.64767465, 1.5,
 1.5, 1, 3.47145794])
