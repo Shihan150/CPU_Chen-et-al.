@@ -3,9 +3,9 @@ A coupled carbon, phosphorus, and uranium (CPU) biogeochemical model is used to 
 ### File structure
 ```
 ├── Model_main_fig_plot.ipynb
-├── For_inv3.csv
+├── For_inv6.csv
 ├── raw_data.xlsx
-├── v4v5.dat
+├── inv6_v4.dat
 ├── README.md
 
 ```
@@ -15,4 +15,4 @@ The file ***For_inv6.csv*** contains the proxy data used to inversely constrain 
 
 The file ***raw_data.xlsx*** contains the raw and smoothed proxy data used for plotting the figures.
 
-The file ***v6v4.dat*** holds the inversion results from the standard experiment.
+The file ***inv6_v4.dat*** holds the inversion results from the standard experiment.
