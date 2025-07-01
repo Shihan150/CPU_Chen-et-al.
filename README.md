@@ -1,3 +1,5 @@
+The paper is now available at: https://www.pnas.org/doi/abs/10.1073/pnas.2420505122[https://www.pnas.org/doi/abs/10.1073/pnas.2420505122]
+
 A coupled carbon, phosphorus, and uranium (CPU) biogeochemical model is used to further explore the mechanisms of (de)oxygenation during a period of major glaciation (310 - 290 Ma).
 
 ### File structure
